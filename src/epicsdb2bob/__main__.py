@@ -9,6 +9,7 @@ from dbtoolspy import Database, load_database_file, load_template_file
 
 from . import __version__
 from .bobfile_gen import generate_bobfile_for_db, generate_bobfile_for_substitution
+from .palettes import WIDGET_PALETTES
 
 __all__ = ["main"]
 
@@ -76,6 +77,20 @@ def main() -> None:
         default=[],
         help="Dirs to search for addtl .bob files for generating substitution screens.",
     )
+    parser.add_argument(
+        "--macro_level",
+        type=str,
+        default="widget",
+        choices=["widget", "screen", "launcher"],
+        help="Level at which to apply macros.",
+    )
+    parser.add_argument(
+        "--palette",
+        type=str,
+        default="default",
+        choices=WIDGET_PALETTES.keys(),
+        help="Color palette to use.",
+    )
 
     args = parser.parse_args()
 
@@ -100,7 +115,15 @@ def main() -> None:
             databases[name],
             title_bar_size=args.title_bar,
             readback_suffix=args.readback_suffix,
+            macros=args.macros,
+            macro_level=args.macro_level,
+            palette=args.palette,
         )
+        if args.macro_level == "screen":
+            for macro in args.macros or []:
+                key, value = macro.split("=")
+                screen.macro(key, value)
+
         logger.info(f"Generated screen for database: {name}")
         output_filepath = os.path.join(args.output, f"{name}.bob")
         screen.write_screen(output_filepath)
@@ -116,8 +139,14 @@ def main() -> None:
     substitutions = find_epics_subs(args.input)
     for substitution in substitutions:
         screen = generate_bobfile_for_substitution(
-            substitution, substitutions[substitution], written_bobfiles, args.embed
+            substitution,
+            substitutions[substitution],
+            written_bobfiles,
+            args.embed,
+            args.palette,
+            args.macro_level,
         )
+
         logger.info(f"Generated screen for substitution: {substitution}")
         output_filepath = os.path.join(args.output, f"{substitution}.bob")
         screen.write_screen(output_filepath)
@@ -134,8 +163,9 @@ def find_epics_dbs_and_templates(
             if file.endswith((".db", ".template")):
                 try:
                     epics_databases[file.split(".", -1)[0]] = load_database_file(
-                        full_file_path, macros=macros
+                        full_file_path, macros=macros, load_includes=False
                     )
+                    print(epics_databases.keys())
                     logger.info(f"Parsed {full_file_path}")
                 except StopIteration:
                     logger.warning(

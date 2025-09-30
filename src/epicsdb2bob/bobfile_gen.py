@@ -5,9 +5,8 @@ from typing import Any
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-import phoebusgen
-import phoebusgen.screen
 from dbtoolspy import Database, Record
+from phoebusgen.screen import Screen
 from phoebusgen.widget import (
     LED,
     ActionButton,
@@ -19,6 +18,18 @@ from phoebusgen.widget import (
     TextEntry,
     TextUpdate,
 )
+from phoebusgen.widget.properties import (
+    _BackgroundColor as HasBackgroundColor,
+)
+from phoebusgen.widget.properties import (
+    _Font as HasFontSize,
+)
+from phoebusgen.widget.properties import (
+    _ForegroundColor as HasForegroundColor,
+)
+from phoebusgen.widget.widget import _Widget as Widget
+
+from .palettes import BACKGROUND_COLOR, BLACK, TITLE_BAR_COLOR, WHITE, WIDGET_PALETTES
 
 logger = logging.getLogger("epicsdb2bob")
 
@@ -29,14 +40,10 @@ TITLE_BAR_HEIGHTS = {"none": 0, "minimal": 10, "full": 50}
 
 DEFAULT_WIDGET_WIDTH = 150
 DEFAULT_WIDGET_HEIGHT = 20
-
-DEFAULT_BACKGROUND_COLOR = (179, 179, 179)
-DEFAULT_TITLE_BAR_COLOR = (100, 100, 100)
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
+FONT_SIZE = 16
 
 
-WIDGET_TO_RECORD_TYPE_MAP = {
+WIDGET_TO_RECORD_TYPE_MAP: dict[str, type[Widget]] = {
     "mbbo": ComboBox,
     "mbbi": TextUpdate,
     "bo": ChoiceButton,
@@ -47,7 +54,7 @@ WIDGET_TO_RECORD_TYPE_MAP = {
     "stringin": TextUpdate,
 }
 
-WIDGET_WIDTHS = {
+WIDGET_WIDTHS: dict[type[Widget], int] = {
     LED: 20,
 }
 
@@ -66,9 +73,11 @@ def template_to_bob(template: str) -> str:
     return os.path.splitext(os.path.basename(template))[0] + ".bob"
 
 
-def add_label_for_record(record: Record, start_x: int, start_y: int) -> Label:
+def add_label_for_record(
+    record: Record, start_x: int, start_y: int, palette: str = "default"
+) -> Label:
     description = record.fields.get("DESC", record.name.rsplit(")")[-1])  #  type: ignore
-    return Label(
+    label = Label(
         short_uuid(),
         description,
         start_x,
@@ -77,43 +86,84 @@ def add_label_for_record(record: Record, start_x: int, start_y: int) -> Label:
         DEFAULT_WIDGET_HEIGHT,
     )
 
+    label.foreground_color(*WIDGET_PALETTES[palette].get(Label, BLACK))
+    label.background_color(*WIDGET_PALETTES[palette].get(Label, BACKGROUND_COLOR))
+    label.font_size(FONT_SIZE)
+
+    return label
+
 
 def add_widget_for_record(
     record: Record,
     start_x: int,
     start_y: int,
+    macros,
+    macro_level,
     readback_record: Record | None = None,
     with_label: bool = True,
-) -> list[Any]:
+    palette: str = "default",
+) -> list[Widget]:
     widget_type = WIDGET_TO_RECORD_TYPE_MAP[str(record.rtyp)]
-    widgets_to_add: list[Any] = []
+
+    widgets_to_add: list[Widget] = []
     current_x = start_x
 
     if with_label:
-        widgets_to_add.append(add_label_for_record(record, start_x, start_y))
-        current_x += DEFAULT_WIDGET_WIDTH + OFFSET
-
-    widgets_to_add.append(
-        widget_type(
-            short_uuid(),
-            str(record.name),
-            current_x,
-            start_y,
-            WIDGET_WIDTHS.get(widget_type, DEFAULT_WIDGET_WIDTH),
-            DEFAULT_WIDGET_HEIGHT,
+        widgets_to_add.append(
+            add_label_for_record(record, start_x, start_y, palette=palette)
         )
+        current_x += WIDGET_WIDTHS.get(Label, DEFAULT_WIDGET_WIDTH) + OFFSET
+
+    pv_name = record.name if record.name is not None else ""
+    if macro_level != "widget":
+        for macro in macros or []:
+            macro_name, macro_value = macro.split("=")
+            pv_name = pv_name.replace(macro_value, f"$({macro_name})")
+
+    widget = widget_type(
+        short_uuid(),
+        str(pv_name),
+        current_x,
+        start_y,
+        WIDGET_WIDTHS.get(widget_type, DEFAULT_WIDGET_WIDTH),
+        DEFAULT_WIDGET_HEIGHT,
     )
-    current_x += DEFAULT_WIDGET_WIDTH + OFFSET
+
+    if isinstance(widget, HasForegroundColor):
+        widget.foreground_color(
+            *WIDGET_PALETTES[palette]["foreground"].get(widget_type, BLACK)
+        )
+
+    if isinstance(widget, HasBackgroundColor):
+        widget.background_color(
+            *WIDGET_PALETTES[palette]["background"].get(widget_type, BACKGROUND_COLOR)
+        )
+
+    if isinstance(widget, HasFontSize):
+        widget.font_size(FONT_SIZE)
+
+    widgets_to_add.append(widget)
+    current_x += WIDGET_WIDTHS.get(widget_type, DEFAULT_WIDGET_WIDTH) + OFFSET
 
     if readback_record:
         widgets_to_add.extend(
-            add_widget_for_record(readback_record, current_x, start_y, with_label=False)
+            add_widget_for_record(
+                readback_record,
+                current_x,
+                start_y,
+                macros,
+                macro_level,
+                with_label=False,
+                palette=palette,
+            )
         )
 
     return widgets_to_add
 
 
-def add_title_bar(screen, title_bar_size: str, name: str, title_bar_width: int) -> None:
+def add_title_bar(
+    screen: Screen, title_bar_size: str, name: str, title_bar_width: int
+) -> None:
     if title_bar_size == "none":
         return
 
@@ -135,13 +185,13 @@ def add_title_bar(screen, title_bar_size: str, name: str, title_bar_width: int) 
         title_bar.border_width(2)
         title_bar.border_color(*BLACK)
 
-    title_bar.background_color(*DEFAULT_TITLE_BAR_COLOR)
+    title_bar.background_color(*TITLE_BAR_COLOR)
     title_bar.transparent(False)
     title_bar.vertical_alignment_middle()
     screen.add_widget(title_bar)
 
 
-def add_border(screen, title_bar_size: str) -> Rectangle:
+def add_border(screen: Screen, title_bar_size: str) -> Rectangle:
     border = Rectangle(
         short_uuid(), 0, int(TITLE_BAR_HEIGHTS[title_bar_size] / 2) + 1, 0, 0
     )
@@ -155,9 +205,17 @@ def add_border(screen, title_bar_size: str) -> Rectangle:
 
 
 def generate_bobfile_for_db(
-    name: str, database: Database, title_bar_size: str, readback_suffix: str
-) -> phoebusgen.screen.Screen:
-    screen = phoebusgen.screen.Screen(name)
+    name: str,
+    database: Database,
+    title_bar_size: str,
+    macros,
+    macro_level: str,
+    readback_suffix: str,
+    palette: str = "default",
+    use_combobox_for_bo: bool = False,
+    use_textupdate_bi: bool = False,
+) -> Screen:
+    screen = Screen(name)
 
     current_x_pos = OFFSET
     current_y_pos = 2 * OFFSET + TITLE_BAR_HEIGHTS[title_bar_size]
@@ -185,7 +243,13 @@ def generate_bobfile_for_db(
                         max_widgets_in_row = 3
 
                 for widget in add_widget_for_record(
-                    record, current_x_pos, current_y_pos, readback_record
+                    record,
+                    current_x_pos,
+                    current_y_pos,
+                    macros,
+                    macro_level,
+                    readback_record,
+                    palette=palette,
                 ):
                     logger.info(
                         f"Adding {widget.__class__.__name__} widget for {record.name}"
@@ -229,7 +293,7 @@ def generate_bobfile_for_db(
         border.width(screen_width)
         border.height(screen_height - int(TITLE_BAR_HEIGHTS[title_bar_size] / 2))
 
-    screen.background_color(*DEFAULT_BACKGROUND_COLOR)
+    screen.background_color(*BACKGROUND_COLOR)
 
     screen.height(screen_height)
     screen.width(screen_width)
@@ -251,12 +315,13 @@ def generate_bobfile_for_substitution(
     substitution: dict[str, Any],
     written_bobfiles: dict[str, str],
     embed: str = "none",
-) -> phoebusgen.screen.Screen:
+    palette: str = "default",
+) -> Screen:
     """
     Generate a BOB file for a substitution.
     """
-    screen = phoebusgen.screen.Screen(substitution_name)
-    screen.background_color(*DEFAULT_BACKGROUND_COLOR)
+    screen = Screen(substitution_name)
+    screen.background_color(*BACKGROUND_COLOR)
 
     screen_width = 0
     max_col_width = 0
