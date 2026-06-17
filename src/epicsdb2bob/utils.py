@@ -32,7 +32,9 @@ def order_dbs_by_includes(databases: dict[str, Database]) -> OrderedDict[str, Da
             ]
             if external_includes:
                 logger.warning(
-                    f"Database {db_name} includes external templates: {external_includes}"
+                    "Database %s includes external templates: %s",
+                    db_name,
+                    external_includes,
                 )
             if all(os.path.splitext(inc)[0] in ordered_dbs for inc in local_includes):
                 ordered_dbs[db_name] = db

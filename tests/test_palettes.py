@@ -1,6 +1,7 @@
 import copy
 
 import pytest
+from phoebusgen.v4.properties import Color
 from phoebusgen.v4.widgets import (
     ActionButton,
     ChoiceButton,
@@ -95,12 +96,12 @@ def test_palette_update(palette_name: str) -> None:
     original_palette = BUILTIN_PALETTES[palette_name]
     palette = copy.deepcopy(original_palette)
     new_palette = Palette(
-        screen_bg=(100, 100, 100),
-        border_color=(50, 50, 50),
-        title_bar_bg=(150, 150, 150),
-        title_bar_fg=(200, 200, 200),
-        widget_fg={TextUpdate: (0, 0, 0)},
-        widget_bg={TextUpdate: (255, 255, 255)},
+        screen_bg=Color((100, 100, 100)),
+        border_color=Color((50, 50, 50)),
+        title_bar_bg=Color((150, 150, 150)),
+        title_bar_fg=Color((200, 200, 200)),
+        widget_fg={TextUpdate: Color((0, 0, 0))},
+        widget_bg={TextUpdate: Color((255, 255, 255))},
     )
     palette.update(new_palette)
 

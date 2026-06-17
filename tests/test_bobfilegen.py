@@ -3,8 +3,8 @@ import random
 from pathlib import Path
 
 import pytest
-from phoebusgen.v4.widgets import Label, Rectangle
 from phoebusgen.v4.properties import HorizontalAlignment as PGHorizontalAlignment
+from phoebusgen.v4.widgets import Label, Rectangle
 
 from epicsdb2bob.bobfile_gen import (
     add_border,
@@ -125,14 +125,14 @@ def test_add_widget_for_record(
 
     main_widget = widget_list[1]
     assert isinstance(main_widget, DEFAULT_RTYPE_TO_WIDGET_MAP[rtype])
-    assert main_widget.pv_name == record.name
+    assert main_widget.pv_name == record.name  # ty: ignore[unresolved-attribute]
     assert main_widget.x == start_x + x_inc
     assert main_widget.y == start_y
 
     if readback:
         readback_widget = widget_list[2]
         assert isinstance(readback_widget, DEFAULT_RTYPE_TO_WIDGET_MAP[readback.rtype])
-        assert readback_widget.pv_name == readback.name
+        assert readback_widget.pv_name == readback.name  # ty: ignore[unresolved-attribute]
         assert readback_widget.x == start_x + 2 * x_inc
         assert readback_widget.y == start_y
 

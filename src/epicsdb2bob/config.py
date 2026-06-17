@@ -1,11 +1,12 @@
 import os
 from dataclasses import dataclass, field
-from enum import Enum, StrEnum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-import yaml
 import phoebusgen.v4.widgets
+import yaml
+from phoebusgen.v4.properties import Color, HorizontalAlignment
 from phoebusgen.v4.widgets import (
     LED,
     ChoiceButton,
@@ -14,7 +15,6 @@ from phoebusgen.v4.widgets import (
     TextUpdate,
     Widget,
 )
-from phoebusgen.v4.properties import HorizontalAlignment, Color
 
 from .palettes import BUILTIN_PALETTES, Palette
 

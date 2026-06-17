@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import phoebusgen.v4.widgets
-
+from phoebusgen.v4.properties import Color
 from phoebusgen.v4.widgets import (
     ActionButton,
     ChoiceButton,
@@ -13,8 +13,6 @@ from phoebusgen.v4.widgets import (
     TextUpdate,
     Widget,
 )
-from phoebusgen.v4.properties import Color
-
 
 # Some default colors
 WHITE: Color = Color((255, 255, 255))

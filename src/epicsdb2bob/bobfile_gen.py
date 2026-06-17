@@ -7,21 +7,6 @@ from xml.etree import ElementTree as ET
 
 from epicsdbtools import Database, Record
 from phoebusgen.v4 import Screen
-from phoebusgen.v4.widgets import (
-    ActionButton,
-    EmbeddedDisplay,
-    Group,
-    Label,
-    Rectangle,
-    TextUpdate,
-    Widget,
-)
-from phoebusgen.v4.properties.display import (
-    HasBackgroundColor,
-    HasFont,
-    HasForegroundColor,
-    HasHorizontalAlignment,
-)
 from phoebusgen.v4.properties import (
     Color,
     GroupStyle,
@@ -29,7 +14,20 @@ from phoebusgen.v4.properties import (
     OpenDisplayAction,
     VerticalAlignment,
 )
+from phoebusgen.v4.properties.display import (
+    HasBackgroundColor,
+    HasFont,
+    HasForegroundColor,
+)
 from phoebusgen.v4.properties.types import OpenDisplayTarget
+from phoebusgen.v4.widgets import (
+    ActionButton,
+    EmbeddedDisplay,
+    Group,
+    Label,
+    Rectangle,
+    Widget,
+)
 
 from .config import (
     EmbedLevel,
@@ -106,11 +104,11 @@ def add_widget_for_record(
 
     widget = widget_type(
         short_uuid(),
-        str(pv_name),
+        str(pv_name),  # ty: ignore[invalid-argument-type]
         current_x,
         start_y,
         config.widget_widths.get(widget_type, config.default_widget_width),
-        config.default_widget_height,
+        config.default_widget_height,  # ty: ignore[too-many-positional-arguments]
     )
 
     if isinstance(widget, HasForegroundColor):
@@ -438,7 +436,7 @@ def generate_bobfile_for_db(
             # Offset embeds below the group if one exists
             y_offset = screen_height
 
-            for (px, py), embed_widget, (ew, eh) in zip(
+            for (px, py), embed_widget, (_ew, _eh) in zip(
                 packed_positions, embed_widgets, embed_sizes, strict=False
             ):
                 embed_widget.x = px + config.widget_offset
