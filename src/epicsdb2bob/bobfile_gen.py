@@ -57,11 +57,10 @@ def template_to_bob(template: str) -> str:
     return os.path.splitext(os.path.basename(template))[0] + ".bob"
 
 
-
 def add_label_for_record(
     record: Record, start_x: int, start_y: int, config: EPICSDB2BOBConfig
 ) -> Label:
-    description = record.fields.get("DESC", record.name.rsplit(")")[-1])  #  type: ignore
+    description = str(record.fields.get("DESC", record.name.rsplit(")")[-1]))
     label = Label(
         short_uuid(),
         str(description),
@@ -289,6 +288,10 @@ def generate_bobfile_for_db(
         logger.info(f"Processing record: {record.name} of type {record.rtype}")
         if record.rtype not in config.rtype_to_widget_map:
             logger.warning(f"Record type {record.rtype} not supported, skipping.")
+        elif record.fields.get("DTYP", None) is None:
+            logger.warning(
+                f"{record.name} does not define DTYP. Assuming it's an override."
+            )
         else:
             if record.name in records_seen:
                 logger.info(f"Record {record.name} already processed, skipping.")
@@ -351,10 +354,18 @@ def generate_bobfile_for_db(
     if group_widgets:
         # Group box style adds a 10px bounding box inside its edges
         # Width = 30 + widget_offset * (num_cols + 1) + num_cols * widget_width
-        content_width = col_width_widgets * config.default_widget_width + (col_width_widgets + 1) * config.widget_offset
+        content_width = (
+            col_width_widgets * config.default_widget_width
+            + (col_width_widgets + 1) * config.widget_offset
+        )
         if current_x_pos != start_x_pos:
-            num_screen_cols = (current_x_pos - start_x_pos) // (col_width_widgets * (config.default_widget_width + config.widget_offset)) + 1
-            content_width = num_screen_cols * (col_width_widgets * config.default_widget_width + (col_width_widgets + 1) * config.widget_offset)
+            num_screen_cols = (current_x_pos - start_x_pos) // (
+                col_width_widgets * (config.default_widget_width + config.widget_offset)
+            ) + 1
+            content_width = num_screen_cols * (
+                col_width_widgets * config.default_widget_width
+                + (col_width_widgets + 1) * config.widget_offset
+            )
         group_width = 30 + content_width
 
         if current_x_pos != start_x_pos:
@@ -545,10 +556,15 @@ def generate_bobfile_for_substitution(
                         macros=instance,
                     )
                 )
-                embed_rects.append((launcher_buttons[template], (
-                    config.default_widget_width + config.widget_offset,
-                    config.default_widget_height + config.widget_offset,
-                )))
+                embed_rects.append(
+                    (
+                        launcher_buttons[template],
+                        (
+                            config.default_widget_width + config.widget_offset,
+                            config.default_widget_height + config.widget_offset,
+                        ),
+                    )
+                )
 
     packed_x_y_embeds = pack_close_to_square(
         [size for _, size in embed_rects],

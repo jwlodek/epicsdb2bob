@@ -25,12 +25,10 @@ def order_dbs_by_includes(databases: dict[str, Database]) -> OrderedDict[str, Da
             includes = db.get_included_templates()
             # Only consider includes that are in the local database set
             local_includes = [
-                inc for inc in includes
-                if os.path.splitext(inc)[0] in databases
+                inc for inc in includes if os.path.splitext(inc)[0] in databases
             ]
             external_includes = [
-                inc for inc in includes
-                if os.path.splitext(inc)[0] not in databases
+                inc for inc in includes if os.path.splitext(inc)[0] not in databases
             ]
             if external_includes:
                 logger.warning(
