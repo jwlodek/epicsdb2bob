@@ -253,7 +253,11 @@ def _next_widget_position_in_group(
     new_x = current_x
     new_y = current_y + config.default_widget_height + config.widget_offset
 
-    if new_y > config.max_screen_height:
+    # Group height is next_y + 3 * offset, so wrap before that exceeds the limit
+    if (
+        new_y + config.default_widget_height + 4 * config.widget_offset
+        > config.max_screen_height
+    ):
         new_y = start_y
         new_x = get_next_x_position(current_x, col_width_widgets, config)
 
@@ -367,7 +371,7 @@ def generate_bobfile_for_db(
         group_width = 30 + content_width
 
         if current_x_pos != start_x_pos:
-            group_height = config.max_screen_height + 3 * config.widget_offset
+            group_height = config.max_screen_height
         else:
             group_height = current_y_pos + 3 * config.widget_offset
 

@@ -139,6 +139,9 @@ def pack_close_to_square(
         (width + padding, height + padding) for width, height in rectangle_sizes
     ]
 
+    # A child taller than max_height can never fit, so allow height to grow to it
+    max_height = max(max_height, max((h for _, h in padded_rectangle_sizes), default=0))
+
     height = 100
     width = 100
     increment = 100
@@ -146,8 +149,8 @@ def pack_close_to_square(
     iteration = 0
     while True:
         try:
-            if height < width and height + increment <= max_height:
-                height += increment
+            if height < width and height < max_height:
+                height = min(height + increment, max_height)
             else:
                 width += increment
             packed_x_y_positions = rpack.pack(padded_rectangle_sizes, width, height)
