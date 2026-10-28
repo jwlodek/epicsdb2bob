@@ -236,7 +236,11 @@ def add_dividing_line(
     config: EPICSDB2BOBConfig,
 ) -> Rectangle:
     dividing_line = Rectangle(
-        short_uuid(), x_position, y_position, 2, config.max_screen_height - y_position
+        short_uuid(),
+        x_position,
+        y_position,
+        2,
+        config.max_screen_height - 4 * config.widget_offset - y_position,
     )
     dividing_line.line_color = Color(BLACK)
     return dividing_line
@@ -246,7 +250,7 @@ def _next_widget_position_in_group(
     current_x: int,
     current_y: int,
     start_y: int,
-    col_width_widgets: int,
+    next_col_x: int,
     config: EPICSDB2BOBConfig,
 ) -> tuple[int, int]:
     """Compute next widget position within a group (no title bar offset)."""
@@ -259,7 +263,7 @@ def _next_widget_position_in_group(
         > config.max_screen_height
     ):
         new_y = start_y
-        new_x = get_next_x_position(current_x, col_width_widgets, config)
+        new_x = next_col_x
 
     return new_x, new_y
 
@@ -280,7 +284,7 @@ def generate_bobfile_for_db(
     current_y_pos = start_y_pos
 
     widget_counters: dict[type[Widget], int] = {}
-    col_width_widgets = 2
+    col_max_right = current_x_pos
 
     group_widgets: list[Widget] = []
 
@@ -314,9 +318,8 @@ def generate_bobfile_for_db(
                     readback_record=readback_record,
                 )
 
-                col_width_widgets = max(len(widgets_for_record), col_width_widgets)
-
                 for widget in widgets_for_record:
+                    col_max_right = max(col_max_right, widget.x + widget.width)
                     widget_counters[type(widget)] = (
                         widget_counters.get(type(widget), 0) + 1
                     )
@@ -337,17 +340,17 @@ def generate_bobfile_for_db(
                     current_x_pos,
                     current_y_pos,
                     start_y_pos,
-                    col_width_widgets,
+                    col_max_right + 2 * config.widget_offset,
                     config,
                 )
                 if current_y_pos == start_y_pos:
                     widget_counters[Rectangle] = widget_counters.get(Rectangle, 0) + 1
                     dividing_line = add_dividing_line(
-                        current_x_pos - config.widget_offset, start_y_pos, config
+                        col_max_right + config.widget_offset, start_y_pos, config
                     )
                     dividing_line.name = f"Rectangle_{widget_counters[Rectangle]}"
                     group_widgets.append(dividing_line)
-                    col_width_widgets = 2
+                    col_max_right = current_x_pos
 
     screen_width = 0
     screen_height = 0
@@ -355,19 +358,7 @@ def generate_bobfile_for_db(
     # Only create the group if there are records to display
     if group_widgets:
         # Group box style adds a 10px bounding box inside its edges
-        # Width = 30 + widget_offset * (num_cols + 1) + num_cols * widget_width
-        content_width = (
-            col_width_widgets * config.default_widget_width
-            + (col_width_widgets + 1) * config.widget_offset
-        )
-        if current_x_pos != start_x_pos:
-            num_screen_cols = (current_x_pos - start_x_pos) // (
-                col_width_widgets * (config.default_widget_width + config.widget_offset)
-            ) + 1
-            content_width = num_screen_cols * (
-                col_width_widgets * config.default_widget_width
-                + (col_width_widgets + 1) * config.widget_offset
-            )
+        content_width = max(w.x + w.width for w in group_widgets) + config.widget_offset
         group_width = 30 + content_width
 
         if current_x_pos != start_x_pos:

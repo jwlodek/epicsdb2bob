@@ -187,7 +187,7 @@ def test_add_dividing_line(default_config):
     assert dividing_line.y == 20
     assert isinstance(dividing_line, Rectangle)
     assert dividing_line.width == 2
-    assert dividing_line.height == 1180
+    assert dividing_line.height == 1140
 
 
 @pytest.mark.parametrize(
